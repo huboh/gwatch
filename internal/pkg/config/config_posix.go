@@ -2,9 +2,11 @@
 
 package config
 
-import "path"
+import (
+	"path/filepath"
+)
 
 var (
 	// defaultBinPath defines the path to built binary
-	defaultBinPath = path.Join(rootDir, "bin", "main")
+	defaultBinPath = filepath.Join(rootDir, "bin", "main")
 )

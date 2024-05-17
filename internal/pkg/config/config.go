@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/huboh/gwatch/internal/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -17,7 +17,7 @@ var (
 	configName = "gwatch.yml"
 
 	// configPath is path to our configuration file
-	configPath = path.Join(rootDir, configName)
+	configPath = filepath.Join(rootDir, configName)
 
 	// defaultExts defines the default file extensions to watch for changes.
 	defaultExts = []string{"go", "tmp", "tmpl", "html"}
@@ -77,7 +77,7 @@ func New() (*Config, error) {
 		}
 	}()
 
-	// if config file don't exits create new one and write our defaults to it, the return it.
+	// if config file don't exists create new one and write our defaults to it, then return it.
 	if _, err := os.Stat(configPath); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -90,7 +90,7 @@ func New() (*Config, error) {
 		return config, nil
 	}
 
-	// read config file and merge it with our defaults the return it.
+	// read config file and merge it with our defaults, then return it.
 	byts, err := os.ReadFile(configPath)
 
 	if err != nil {
