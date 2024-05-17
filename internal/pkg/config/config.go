@@ -1,3 +1,4 @@
+// Package config provides functionality loading & writing our app config.
 package config
 
 import (
@@ -35,6 +36,7 @@ var (
 	defaultBuildCmd = fmt.Sprintf("go build -o %s %s", defaultBinPath, rootDir)
 )
 
+// Config represents the app's
 type Config struct {
 	// watcher config
 	Root      string   `yaml:"root"`
@@ -46,14 +48,23 @@ type Config struct {
 	// runner config
 	Run   RunConfig   `yaml:"run"`
 	Build BuildConfig `yaml:"build"`
+
+	// filePath is the config's file path
+	FilePath string
 }
 
+// Run represents the run configuration for the runner.
 type RunConfig struct {
-	Bin  string   `yaml:"bin"`
+	// Bin is the binary to be executed.
+	Bin string `yaml:"bin"`
+
+	// Args are the arguments to be passed to the binary.
 	Args []string `yaml:"args,flow"`
 }
 
+// Build represents the build configuration for the runner.
 type BuildConfig struct {
+	// Cmd is the build command to be executed.
 	Cmd string `yaml:"cmd"`
 }
 
@@ -65,7 +76,7 @@ type BuildConfig struct {
 // It returns a pointer to a Config and an error. If successful, the error is nil.
 func New() (*Config, error) {
 	var (
-		config  = DefaultConfig()
+		config  = Default()
 		loadErr error
 	)
 
@@ -104,8 +115,8 @@ func New() (*Config, error) {
 	return config, loadErr
 }
 
-// DefaultConfig returns a pointer to a new Config initialized with the default values.
-func DefaultConfig() *Config {
+// Default returns a pointer to a new Config initialized with the default values.
+func Default() *Config {
 	return &Config{
 		Root:      rootDir,
 		Exts:      defaultExts,
@@ -121,6 +132,8 @@ func DefaultConfig() *Config {
 		Build: BuildConfig{
 			Cmd: defaultBuildCmd,
 		},
+
+		FilePath: configPath,
 	}
 }
 
@@ -162,6 +175,6 @@ func (c *Config) Reload() error {
 		return err
 	}
 
-	c = config
+	*c = *config
 	return nil
 }
