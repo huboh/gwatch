@@ -43,7 +43,7 @@ func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
 
 	// checks if theres an active cmd instance in a diff goroutine
 	if c.IsActive() {
-		close(c.done)
+		utils.CloseSafely(c.done)
 	}
 
 	// prevent other goroutine from resetting cmd while we're still active

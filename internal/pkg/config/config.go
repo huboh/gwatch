@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/huboh/gwatch/internal/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -17,8 +18,8 @@ var (
 	// configName is our configuration file name
 	configName = "gwatch.yml"
 
-	// configPath is path to our configuration file
-	configPath = filepath.Join(rootDir, configName)
+	// ConfigPath is path to our configuration file
+	ConfigPath = filepath.Join(rootDir, configName)
 
 	// defaultExts defines the default file extensions to watch for changes.
 	defaultExts = []string{"go", "tmp", "tmpl", "html"}
@@ -34,23 +35,24 @@ var (
 
 	// defaultBuildCmd is the command used to build the project.
 	defaultBuildCmd = fmt.Sprintf("go build -o %s %s", defaultBinPath, rootDir)
+
+	// defaultDelayMs set the watcher delay in between events
+	defaultDelay = time.Millisecond
 )
 
 // Config represents the app's
 type Config struct {
 	// watcher config
-	Root      string   `yaml:"root"`
-	Exts      []string `yaml:"exts,flow"`
-	Paths     []string `yaml:"paths,flow"`
-	Exclude   []string `yaml:"exclude,flow"`
-	Recursive bool     `yaml:"recursive"`
+	Root      string        `yaml:"root"`
+	Exts      []string      `yaml:"exts,flow"`
+	Paths     []string      `yaml:"paths,flow"`
+	Exclude   []string      `yaml:"exclude,flow"`
+	Delay     time.Duration `yaml:"delay"`
+	Recursive bool          `yaml:"recursive"`
 
 	// runner config
 	Run   RunConfig   `yaml:"run"`
 	Build BuildConfig `yaml:"build"`
-
-	// filePath is the config's file path
-	FilePath string
 }
 
 // Run represents the run configuration for the runner.
@@ -89,12 +91,12 @@ func New() (*Config, error) {
 	}()
 
 	// if config file don't exists create new one and write our defaults to it, then return it.
-	if _, err := os.Stat(configPath); err != nil {
+	if _, err := os.Stat(ConfigPath); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
 
-		if err := createAndWriteConfigFile(configPath, *config); err != nil {
+		if err := createAndWriteConfigFile(ConfigPath, *config); err != nil {
 			return nil, err
 		}
 
@@ -102,7 +104,7 @@ func New() (*Config, error) {
 	}
 
 	// read config file and merge it with our defaults, then return it.
-	byts, err := os.ReadFile(configPath)
+	byts, err := os.ReadFile(ConfigPath)
 
 	if err != nil {
 		return nil, err
@@ -122,6 +124,7 @@ func Default() *Config {
 		Exts:      defaultExts,
 		Paths:     defaultPaths,
 		Exclude:   defaultExclude,
+		Delay:     defaultDelay,
 		Recursive: defaultRecursive,
 
 		Run: RunConfig{
@@ -132,8 +135,6 @@ func Default() *Config {
 		Build: BuildConfig{
 			Cmd: defaultBuildCmd,
 		},
-
-		FilePath: configPath,
 	}
 }
 

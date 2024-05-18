@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/huboh/gwatch/internal/pkg/config"
+	"github.com/huboh/gwatch/internal/pkg/utils"
 )
 
 //
@@ -28,6 +30,9 @@ type WatcherConfigs struct {
 	// exclude is the list of directories to exclude from the watch list
 	exclude []string
 
+	// recursive set the delay for event handlers execution
+	delay time.Duration
+
 	// rootDir
 	rootDir string
 
@@ -42,6 +47,7 @@ func NewConfigs(config config.Config) *WatcherConfigs {
 			paths:     config.Paths,
 			exclude:   config.Exclude,
 			rootDir:   config.Root,
+			delay:     config.Delay,
 			recursive: config.Recursive,
 		}
 
@@ -147,6 +153,18 @@ func (w *Watcher) Listen(onListen func(paths []string)) {
 		go onListen(w.watcher.WatchList())
 	}
 
+	var (
+		event   *Event
+		handler EventHandler
+
+		// execute last handler call after config's delay
+		debouncedHandler = utils.Debounce(w.configs.delay, func() {
+			if event != nil && handler != nil {
+				go handler(*event)
+			}
+		})
+	)
+
 	for {
 		select {
 		case err, open := <-w.watcher.Errors:
@@ -162,16 +180,17 @@ func (w *Watcher) Listen(onListen func(paths []string)) {
 			}
 
 			var (
-				event            = NewEvent(EventType(evt.Op), evt.Name)
-				handlers, exists = w.eventHandlers[event.Type]
-				extension        = strings.TrimPrefix(filepath.Ext(event.Path), ".")
+				fsEvent          = NewEvent(EventType(evt.Op), evt.Name)
+				handlers, exists = w.eventHandlers[fsEvent.Type]
+				extension        = strings.TrimPrefix(filepath.Ext(fsEvent.Path), ".")
 			)
 
 			if !exists {
 				continue
 			}
 
-			stat, err := os.Stat(event.Path)
+			stat, err := os.Stat(fsEvent.Path)
+
 			if err != nil {
 				go w.eventErrHandler(err)
 				return
@@ -183,8 +202,11 @@ func (w *Watcher) Listen(onListen func(paths []string)) {
 			//? doing this we get the correct file mode for the specific `os`, then check if its a regular file.
 			//? because the FileInfo (stat variable) is an interface and the impl might be different depending on the `os` and `filesystem`
 			if stat.Mode().IsRegular() && slices.Contains(w.configs.exts, extension) {
-				for _, handler := range handlers {
-					go handler(*event)
+				for _, h := range handlers {
+					event = fsEvent
+					handler = h
+
+					debouncedHandler()
 				}
 			}
 		}
