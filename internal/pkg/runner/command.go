@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/huboh/gwatch/internal/pkg/utils"
@@ -24,16 +25,20 @@ type Command struct {
 
 	// cmdLock Mutex prevent concurrent access to the underlying command.
 	cmdLock *sync.RWMutex
+
+	// outPrefix is the prefix to add to the commands output.
+	outPrefix string
 }
 
 // NewCommand creates a new Command instance pointer with the provided arguments.
 //
 // Use Run method to execute the command.
 // Use Kill method to terminate the running command.
-func NewCommand(args []string) *Command {
+func NewCommand(args []string, outPrefix string) *Command {
 	return &Command{
-		args:    args,
-		cmdLock: new(sync.RWMutex),
+		args:      args,
+		cmdLock:   new(sync.RWMutex),
+		outPrefix: outPrefix,
 	}
 }
 
@@ -123,8 +128,12 @@ func (c *Command) PipeStdOut(stdout io.Writer) error {
 
 		stdOutScanner := bufio.NewScanner(stdOutPipe)
 
+		if c.outPrefix != "" && !strings.HasSuffix(c.outPrefix, ":") {
+			c.outPrefix = c.outPrefix + ":"
+		}
+
 		for stdOutScanner.Scan() {
-			fmt.Fprintln(stdout, "stdout:", stdOutScanner.Text())
+			fmt.Fprintln(stdout, c.outPrefix, stdOutScanner.Text())
 		}
 	}()
 
@@ -144,8 +153,12 @@ func (c *Command) PipeStdErr(stderr io.Writer) error {
 
 		stdErrScanner := bufio.NewScanner(stdErrPipe)
 
+		if c.outPrefix != "" && !strings.HasSuffix(c.outPrefix, ":") {
+			c.outPrefix = c.outPrefix + ":"
+		}
+
 		for stdErrScanner.Scan() {
-			fmt.Fprintln(stderr, "stderr:", stdErrScanner.Text())
+			fmt.Fprintln(stderr, c.outPrefix, stdErrScanner.Text())
 		}
 	}()
 

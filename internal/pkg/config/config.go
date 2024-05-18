@@ -36,8 +36,11 @@ var (
 	// defaultBuildCmd is the command used to build the project.
 	defaultBuildCmd = fmt.Sprintf("go build -o %s %s", defaultBinPath, rootDir)
 
-	// defaultDelayMs set the watcher delay in between events
+	// defaultDelayMs is the watcher delay in between events
 	defaultDelay = time.Millisecond
+
+	// defaultLogPrefix is the prefix added to runner stderr/stdout output
+	defaultLogPrefix = filepath.Base(rootDir)
 )
 
 // Config represents the app's
@@ -51,8 +54,9 @@ type Config struct {
 	Recursive bool          `yaml:"recursive"`
 
 	// runner config
-	Run   RunConfig   `yaml:"run"`
-	Build BuildConfig `yaml:"build"`
+	LogPrefix string      `yaml:"log_prefix"`
+	Run       RunConfig   `yaml:"run"`
+	Build     BuildConfig `yaml:"build"`
 }
 
 // Run represents the run configuration for the runner.
@@ -126,6 +130,7 @@ func Default() *Config {
 		Exclude:   defaultExclude,
 		Delay:     defaultDelay,
 		Recursive: defaultRecursive,
+		LogPrefix: defaultLogPrefix,
 
 		Run: RunConfig{
 			Bin:  defaultBinPath,

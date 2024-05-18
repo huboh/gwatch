@@ -20,8 +20,8 @@ type Runner struct {
 // New creates a new `*Runner` instance with the given configuration.
 func New(config config.Config) *Runner {
 	return &Runner{
-		buildCmd:    NewCommand(strings.Split(config.Build.Cmd, "\x20")),
-		runBuildCmd: NewCommand(append([]string{config.Run.Bin}, config.Run.Args...)),
+		buildCmd:    NewCommand(strings.Split(config.Build.Cmd, "\x20"), config.LogPrefix),
+		runBuildCmd: NewCommand(append([]string{config.Run.Bin}, config.Run.Args...), config.LogPrefix),
 	}
 }
 
