@@ -37,7 +37,7 @@ var (
 	defaultBuildCmd = fmt.Sprintf("go build -o %s %s", defaultBinPath, rootDir)
 
 	// defaultDelayMs is the watcher delay in between events
-	defaultDelay = time.Millisecond
+	defaultDelay = time.Millisecond * 100
 
 	// defaultLogPrefix is the prefix added to runner stderr/stdout output
 	defaultLogPrefix = filepath.Base(rootDir)
