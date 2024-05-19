@@ -89,7 +89,7 @@ recursive: true
 
 contributions are welcomed! Please fork the repository and submit pull requests. A typical workflow is:
 
-1. Fork the repository. see [here]((http://blog.campoy.cat/2014/03/github-and-go-forking-pull-requests-and.html)) for tips.
+1. Fork the repository. see [here](http://blog.campoy.cat/2014/03/github-and-go-forking-pull-requests-and.html) for tips.
 2. [Create your feature branch.](http://learn.github.com/p/branching.html)
 3. Add tests for your change.
 4. Run `go test`. If your tests pass, return to the step 3.
