@@ -1,9 +1,11 @@
+// Package config provides functionality loading & writing our app config.
 package config
 
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
+	"time"
 
 	"github.com/huboh/gwatch/internal/pkg/utils"
 	"gopkg.in/yaml.v3"
@@ -16,8 +18,8 @@ var (
 	// configName is our configuration file name
 	configName = "gwatch.yml"
 
-	// configPath is path to our configuration file
-	configPath = path.Join(rootDir, configName)
+	// ConfigPath is path to our configuration file
+	ConfigPath = filepath.Join(rootDir, configName)
 
 	// defaultExts defines the default file extensions to watch for changes.
 	defaultExts = []string{"go", "tmp", "tmpl", "html"}
@@ -33,27 +35,42 @@ var (
 
 	// defaultBuildCmd is the command used to build the project.
 	defaultBuildCmd = fmt.Sprintf("go build -o %s %s", defaultBinPath, rootDir)
+
+	// defaultDelayMs is the watcher delay in between events
+	defaultDelay = time.Millisecond
+
+	// defaultLogPrefix is the prefix added to runner stderr/stdout output
+	defaultLogPrefix = filepath.Base(rootDir)
 )
 
+// Config represents the app's
 type Config struct {
 	// watcher config
-	Root      string   `yaml:"root"`
-	Exts      []string `yaml:"exts,flow"`
-	Paths     []string `yaml:"paths,flow"`
-	Exclude   []string `yaml:"exclude,flow"`
-	Recursive bool     `yaml:"recursive"`
+	Root      string        `yaml:"root"`
+	Exts      []string      `yaml:"exts,flow"`
+	Paths     []string      `yaml:"paths,flow"`
+	Exclude   []string      `yaml:"exclude,flow"`
+	Delay     time.Duration `yaml:"delay"`
+	Recursive bool          `yaml:"recursive"`
 
 	// runner config
-	Run   RunConfig   `yaml:"run"`
-	Build BuildConfig `yaml:"build"`
+	LogPrefix string      `yaml:"log_prefix"`
+	Run       RunConfig   `yaml:"run"`
+	Build     BuildConfig `yaml:"build"`
 }
 
+// Run represents the run configuration for the runner.
 type RunConfig struct {
-	Bin  string   `yaml:"bin"`
+	// Bin is the binary to be executed.
+	Bin string `yaml:"bin"`
+
+	// Args are the arguments to be passed to the binary.
 	Args []string `yaml:"args,flow"`
 }
 
+// Build represents the build configuration for the runner.
 type BuildConfig struct {
+	// Cmd is the build command to be executed.
 	Cmd string `yaml:"cmd"`
 }
 
@@ -65,7 +82,7 @@ type BuildConfig struct {
 // It returns a pointer to a Config and an error. If successful, the error is nil.
 func New() (*Config, error) {
 	var (
-		config  = DefaultConfig()
+		config  = Default()
 		loadErr error
 	)
 
@@ -77,21 +94,21 @@ func New() (*Config, error) {
 		}
 	}()
 
-	// if config file don't exits create new one and write our defaults to it, the return it.
-	if _, err := os.Stat(configPath); err != nil {
+	// if config file don't exists create new one and write our defaults to it, then return it.
+	if _, err := os.Stat(ConfigPath); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
 
-		if err := createAndWriteConfigFile(configPath, *config); err != nil {
+		if err := createAndWriteConfigFile(ConfigPath, *config); err != nil {
 			return nil, err
 		}
 
 		return config, nil
 	}
 
-	// read config file and merge it with our defaults the return it.
-	byts, err := os.ReadFile(configPath)
+	// read config file and merge it with our defaults, then return it.
+	byts, err := os.ReadFile(ConfigPath)
 
 	if err != nil {
 		return nil, err
@@ -104,14 +121,16 @@ func New() (*Config, error) {
 	return config, loadErr
 }
 
-// DefaultConfig returns a pointer to a new Config initialized with the default values.
-func DefaultConfig() *Config {
+// Default returns a pointer to a new Config initialized with the default values.
+func Default() *Config {
 	return &Config{
 		Root:      rootDir,
 		Exts:      defaultExts,
 		Paths:     defaultPaths,
 		Exclude:   defaultExclude,
+		Delay:     defaultDelay,
 		Recursive: defaultRecursive,
+		LogPrefix: defaultLogPrefix,
 
 		Run: RunConfig{
 			Bin:  defaultBinPath,
@@ -162,6 +181,6 @@ func (c *Config) Reload() error {
 		return err
 	}
 
-	c = config
+	*c = *config
 	return nil
 }
