@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,14 +18,14 @@ type Command struct {
 	// cmd is the underlying exec.Cmd instance.
 	cmd *exec.Cmd
 
+	// cmdMemAccess Mutex prevent concurrent access to the underlying command.
+	cmdMemAccess *sync.RWMutex
+
 	// args is the command arguments.
 	args []string
 
 	// done is a channel to signal completion or termination of the command.
 	done chan struct{}
-
-	// cmdLock Mutex prevent concurrent access to the underlying command.
-	cmdLock *sync.RWMutex
 
 	// outPrefix is the prefix to add to the commands output.
 	outPrefix string
@@ -36,23 +37,21 @@ type Command struct {
 // Use Kill method to terminate the running command.
 func NewCommand(args []string, outPrefix string) *Command {
 	return &Command{
-		args:      args,
-		cmdLock:   new(sync.RWMutex),
-		outPrefix: outPrefix,
+		args:         args,
+		outPrefix:    outPrefix,
+		cmdMemAccess: new(sync.RWMutex),
 	}
 }
 
 // Run starts the command and waits for it to finish.
 func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
-	var err error
-
-	// checks if theres an active cmd instance in a diff goroutine
+	// checks if there is an active cmd instance in a diff goroutine
 	if c.IsActive() {
 		utils.CloseSafely(c.done)
 	}
 
 	// prevent other goroutine from resetting cmd while we're still active
-	c.cmdLock.Lock()
+	c.cmdMemAccess.Lock()
 
 	// new cmd
 	c.cmd = exec.Command(c.args[0], c.args[1:]...)
@@ -68,42 +67,40 @@ func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
 		// reset
 		c.cmd = nil
 		c.done = nil
-		c.cmdLock.Unlock()
+		c.cmdMemAccess.Unlock()
 	}()
 
 	// start cmd
-	if err = c.cmd.Start(); err != nil {
+	if err := c.cmd.Start(); err != nil {
 		return err
 	}
 
 	select {
-	// TODO: add timeout case if Wait takes too long
-
-	// Wait for the command to finish.
-	case err = <-utils.AsyncResult(c.cmd.Wait):
-		break
-
-	// If the command is unexpectedly killed, send a kill signal to the process.
+	// kill cmd process
 	case <-c.done:
-		if err = c.cmd.Process.Signal(os.Kill); err != nil {
-			return err
-		}
+		return c.Kill()
 
-		if err = c.cmd.Wait(); err != nil {
-			// we killed it so any exit code of not 0 is ignored
-			if _, isExitErr := err.(*exec.ExitError); !isExitErr {
+	// Wait for the cmd to finish or be interuppted.
+	case err := <-utils.AsyncResult(c.cmd.Wait):
+		if err != nil {
+			// cmd was interrupted, so any exit error ignored
+			if err, isExitErr := err.(*exec.ExitError); !isExitErr {
 				return err
 			}
 		}
 	}
 
-	return err
+	return nil
 }
 
 // Kill terminates the command and it's underlying process if it is still running.
 func (c *Command) Kill() error {
 	if c.IsActive() {
-		return c.cmd.Process.Signal(os.Kill)
+		if err := c.cmd.Process.Signal(os.Kill); err != nil {
+			if !errors.Is(err, os.ErrProcessDone) {
+				return err
+			}
+		}
 	}
 
 	return nil
