@@ -1,11 +1,13 @@
 APP_NAME=gwatch
-APP_BINARY=./bin/${APP_NAME}.exe
-APP_BIN_PATH=./bin/
+APP_PATH=./cmd/${APP_NAME}
+APP_BIN_PATH=./bin
 
 all: build run
 
 run:
-	@${APP_BINARY}
+	go run ${APP_PATH}
 
 build:
-	@go build -o ${APP_BIN_PATH} ./cmd/${APP_NAME}
+	GOOS=linux GOARCH=amd64 go build -o ${APP_BIN_PATH}/linux/${APP_NAME} ${APP_PATH}
+	GOOS=darwin GOARCH=amd64 go build -o ${APP_BIN_PATH}/darwin/${APP_NAME} ${APP_PATH}
+	GOOS=windows GOARCH=amd64 go build -o ${APP_BIN_PATH}/windows/${APP_NAME}.exe ${APP_PATH}
