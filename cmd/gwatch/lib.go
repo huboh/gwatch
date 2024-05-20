@@ -28,8 +28,6 @@ func (g *Gwatch) Kill() {
 }
 
 func (g *Gwatch) Start() error {
-	defer g.Kill()
-
 	onBuild := func() {
 		fmt.Println("[gwatch] Building...")
 	}
