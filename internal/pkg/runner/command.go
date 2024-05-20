@@ -44,13 +44,13 @@ func NewCommand(args []string, outPrefix string) *Command {
 }
 
 // Run starts the command and waits for it to finish.
-func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
+func (c *Command) Run(stdout io.Writer, stderr io.Writer, onRun func()) error {
 	// checks if there is an active cmd instance in a diff goroutine
 	if c.IsActive() {
 		utils.CloseSafely(c.done)
 	}
 
-	// prevent other goroutine from resetting cmd while we're still active
+	// prevent other goroutine from resetting cmd while we're still running
 	c.cmdMemAccess.Lock()
 
 	// new cmd
@@ -61,14 +61,17 @@ func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
 	c.PipeStdErr(stderr)
 	c.PipeStdOut(stdout)
 
-	// only unlock when we exit. we exit either the process
-	// ran to completion or we kill it explicitly
+	// only release mem access when we exit.
 	defer func() {
 		// reset
 		c.cmd = nil
 		c.done = nil
 		c.cmdMemAccess.Unlock()
 	}()
+
+	if onRun != nil {
+		onRun()
+	}
 
 	// start cmd
 	if err := c.cmd.Start(); err != nil {
@@ -80,7 +83,7 @@ func (c *Command) Run(stdout io.Writer, stderr io.Writer) error {
 	case <-c.done:
 		return c.Kill()
 
-	// Wait for the cmd to finish or be interuppted.
+	// Wait for the cmd to finish or be interrupted.
 	case err := <-utils.AsyncResult(c.cmd.Wait):
 		if err != nil {
 			// cmd was interrupted, so any exit error ignored

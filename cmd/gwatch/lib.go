@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/huboh/gwatch/internal/pkg/config"
@@ -28,22 +30,29 @@ func (g *Gwatch) Kill() {
 func (g *Gwatch) Start() error {
 	defer g.Kill()
 
+	onBuild := func() {
+		fmt.Println("[gwatch] Building...")
+	}
+
+	onRunBuild := func() {
+		fmt.Println("[gwatch] Running...")
+	}
+
 	g.fsWatcher.OnError(func(e error) {
 		log.Fatal("watcher error", e)
 	})
 
 	g.fsWatcher.OnEvent(watcher.WriteEvent, func(e watcher.Event) {
-		if err := g.runner.Launch(); err != nil {
+		if err := g.runner.Launch(onBuild, onRunBuild); err != nil {
 			log.Fatal(err)
 		}
 	})
 
-	g.fsWatcher.Listen(func(paths []string) {
-		// for _, v := range paths {
-		// 	log.Println("listening for path(s) changes in:", v)
-		// }
+	g.fsWatcher.Listen(func(configs watcher.Configs) {
+		fmt.Println("[gwatch] watching path(s):", strings.Join(configs.RootPaths, ","))
+		fmt.Println("[gwatch] watching extension(s):", strings.Join(configs.Exts, ","))
 
-		if err := g.runner.Launch(); err != nil {
+		if err := g.runner.Launch(onBuild, onRunBuild); err != nil {
 			log.Fatal(err)
 		}
 	})
@@ -61,15 +70,14 @@ func watchConfigFile(onChange func()) {
 	cfg.Recursive = false
 
 	// new watcher for config file
-	cfgWatcher := utils.Must(watcher.New(watcher.NewConfigs(*cfg)))
-
-	defer cfgWatcher.Close()
+	cfgWatcher := utils.Must(
+		watcher.New(watcher.NewConfigs(*cfg)),
+	)
 
 	cfgWatcher.OnEvent(watcher.WriteEvent, func(e watcher.Event) {
-		// detected changes to config file. reload application
 		onChange()
 	})
 
-	// watch config for changes
+	// start watch
 	cfgWatcher.Listen(nil)
 }
