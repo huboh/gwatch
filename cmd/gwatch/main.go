@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/huboh/gwatch/internal/pkg/config"
@@ -13,7 +14,6 @@ func main() {
 	done := make(chan struct{})
 	gwatchCfg := utils.Must(config.New())
 
-	// start gwatch in a goroutine
 	go func() {
 		for {
 			gwatch := &Gwatch{
@@ -26,7 +26,7 @@ func main() {
 			case <-done:
 				gwatch.Kill()
 
-				// reset channel so we dont close a closed channel
+				// reset channel so we don't close a closed channel
 				done = make(chan struct{})
 
 			// start gwatch
@@ -35,14 +35,15 @@ func main() {
 		}
 	}()
 
-	// watch config file for changes
 	watchConfigFile(func() {
-		// signal gwatch to exit, so it can restart.
+		// signal gwatch to restart.
 		defer utils.CloseSafely(done)
 
-		// reload gwatch config on change
+		// reload gwatch config
 		if err := gwatchCfg.Reload(); err != nil {
-			log.Fatal("error restarting gwatch due to config change: ", err)
+			log.Fatal("error reloading gwatch config: ", err)
 		}
+
+		fmt.Println("[gwatch] restarting gwatch due to changes to config file")
 	})
 }

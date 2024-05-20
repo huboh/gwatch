@@ -20,42 +20,46 @@ import (
 //
 //
 
-type WatcherConfigs struct {
-	// exts is the list of file extensions to watch for
-	exts []string
+type Configs struct {
+	// Exts is the list of file extensions to watch for
+	Exts []string
 
-	// paths is the list of directories we are watching
-	paths []string
+	// Paths is the list of directories and subdirectories we are watching
+	Paths []string
 
-	// exclude is the list of directories to exclude from the watch list
-	exclude []string
+	// Exclude is the list of directories to Exclude from the watch list
+	Exclude []string
 
-	// recursive set the delay for event handlers execution
-	delay time.Duration
+	// recursive set the Delay for event handlers execution
+	Delay time.Duration
 
-	// rootDir
-	rootDir string
+	// RootDir iis the current working directory
+	RootDir string
 
-	// recursive enables watching on the subdirectories of the paths in the watch list
-	recursive bool
+	// Recursive enables watching on the subdirectories of the paths in the watch list
+	Recursive bool
+
+	// RootPaths is the list of parent directories to watch from the config
+	RootPaths []string
 }
 
-func NewConfigs(config config.Config) *WatcherConfigs {
+func NewConfigs(config config.Config) *Configs {
 	var (
-		c = &WatcherConfigs{
-			exts:      config.Exts,
-			paths:     config.Paths,
-			exclude:   config.Exclude,
-			rootDir:   config.Root,
-			delay:     config.Delay,
-			recursive: config.Recursive,
+		c = &Configs{
+			Exts:      config.Exts,
+			Paths:     config.Paths,
+			Exclude:   config.Exclude,
+			RootDir:   config.Root,
+			Delay:     config.Delay,
+			Recursive: config.Recursive,
+			RootPaths: config.Paths,
 		}
 
 		// addMatchedDir adds eligible dir to config's paths
 		addMatchedDir fs.WalkDirFunc = func(dir string, dirEnt fs.DirEntry, err error) error {
 			if dirEnt.IsDir() {
-				for _, e := range c.exclude {
-					pattern := filepath.Join(c.rootDir, e)
+				for _, e := range c.Exclude {
+					pattern := filepath.Join(c.RootDir, e)
 					isDirOrSub, err := filepath.Match(pattern, dir)
 
 					if err != nil {
@@ -67,8 +71,8 @@ func NewConfigs(config config.Config) *WatcherConfigs {
 					}
 				}
 
-				if !slices.Contains(c.paths, dir) {
-					c.paths = append(c.paths, dir)
+				if !slices.Contains(c.Paths, dir) {
+					c.Paths = append(c.Paths, dir)
 				}
 			}
 
@@ -77,8 +81,8 @@ func NewConfigs(config config.Config) *WatcherConfigs {
 	)
 
 	// recursively add eligible pathNames to configs's paths
-	if c.recursive {
-		for _, p := range c.paths {
+	if c.Recursive {
+		for _, p := range c.Paths {
 			if err := filepath.WalkDir(p, addMatchedDir); err != nil {
 				panic(err)
 			}
@@ -95,13 +99,13 @@ func NewConfigs(config config.Config) *WatcherConfigs {
 //
 
 type Watcher struct {
-	configs         *WatcherConfigs
+	configs         *Configs
 	watcher         *fsnotify.Watcher
 	eventHandlers   map[EventType][]EventHandler
 	eventErrHandler func(error)
 }
 
-func New(configs *WatcherConfigs) (*Watcher, error) {
+func New(configs *Configs) (*Watcher, error) {
 	var (
 		e error
 
@@ -125,7 +129,7 @@ func New(configs *WatcherConfigs) (*Watcher, error) {
 		return nil, e
 	}
 
-	if e = w.Watch(w.configs.paths...); e != nil {
+	if e = w.Watch(w.configs.Paths...); e != nil {
 		return nil, e
 	}
 
@@ -146,11 +150,11 @@ func (w *Watcher) Watch(paths ...string) error {
 	return nil
 }
 
-func (w *Watcher) Listen(onListen func(paths []string)) {
+func (w *Watcher) Listen(onListen func(configs Configs)) {
 	defer w.watcher.Close()
 
 	if onListen != nil {
-		go onListen(w.watcher.WatchList())
+		go onListen(*w.configs)
 	}
 
 	var (
@@ -158,7 +162,7 @@ func (w *Watcher) Listen(onListen func(paths []string)) {
 		handler EventHandler
 
 		// execute last handler call after config's delay
-		debouncedHandler = utils.Debounce(w.configs.delay, func() {
+		debouncedHandler = utils.Debounce(w.configs.Delay, func() {
 			if event != nil && handler != nil {
 				go handler(*event)
 			}
@@ -201,7 +205,7 @@ func (w *Watcher) Listen(onListen func(paths []string)) {
 			//? instead of call IsDir() directly on the stat, we get the Mode() then check if it's a file.
 			//? doing this we get the correct file mode for the specific `os`, then check if its a regular file.
 			//? because the FileInfo (stat variable) is an interface and the impl might be different depending on the `os` and `filesystem`
-			if stat.Mode().IsRegular() && slices.Contains(w.configs.exts, extension) {
+			if stat.Mode().IsRegular() && slices.Contains(w.configs.Exts, extension) {
 				for _, h := range handlers {
 					event = fsEvent
 					handler = h

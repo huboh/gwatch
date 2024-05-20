@@ -39,12 +39,12 @@ func (r *Runner) Kill() error {
 }
 
 // Launch builds and runs the application.
-func (r *Runner) Launch() error {
-	if err := r.buildCmd.Run(os.Stdout, os.Stderr); err != nil {
+func (r *Runner) Launch(onBuild func(), onRunBuild func()) error {
+	if err := r.buildCmd.Run(os.Stdout, os.Stderr, onBuild); err != nil {
 		return err
 	}
 
-	if err := r.runBuildCmd.Run(os.Stdout, os.Stderr); err != nil {
+	if err := r.runBuildCmd.Run(os.Stdout, os.Stderr, onRunBuild); err != nil {
 		return err
 	}
 

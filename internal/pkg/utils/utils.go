@@ -53,9 +53,6 @@ func AsyncResult[T any](f func() T) <-chan T {
 
 // CloseSafely closes buffered or unbuffered channel if it is not already closed.
 func CloseSafely[T any](c chan T) {
-	defer func() {
-		recover()
-	}()
-
+	defer recover()
 	close(c)
 }
