@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/huboh/gwatch/internal/pkg/config"
+	"github.com/huboh/gwatch/internal/pkg/logger"
 	"github.com/huboh/gwatch/internal/pkg/runner"
 	"github.com/huboh/gwatch/internal/pkg/utils"
 	"github.com/huboh/gwatch/internal/pkg/watcher"
@@ -12,6 +12,7 @@ import (
 
 func main() {
 	done := make(chan struct{})
+	clrLog := logger.New().Watcher()
 	gwatchCfg := utils.Must(config.New())
 
 	go func() {
@@ -44,6 +45,6 @@ func main() {
 			log.Fatal("error reloading gwatch config: ", err)
 		}
 
-		fmt.Println("[gwatch] restarting gwatch due to changes to config file")
+		clrLog("restarting gwatch due to changes to config file")
 	})
 }

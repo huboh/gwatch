@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"strings"
 	"time"
 
 	"github.com/huboh/gwatch/internal/pkg/config"
+	"github.com/huboh/gwatch/internal/pkg/logger"
 	"github.com/huboh/gwatch/internal/pkg/runner"
 	"github.com/huboh/gwatch/internal/pkg/utils"
 	"github.com/huboh/gwatch/internal/pkg/watcher"
@@ -28,12 +28,14 @@ func (g *Gwatch) Kill() {
 }
 
 func (g *Gwatch) Start() error {
+	clrLog := logger.New().Runner()
+
 	onBuild := func() {
-		fmt.Println("[gwatch] Building...")
+		clrLog("Building...")
 	}
 
 	onRunBuild := func() {
-		fmt.Println("[gwatch] Running...")
+		clrLog("Running...")
 	}
 
 	g.fsWatcher.OnError(func(e error) {
@@ -47,8 +49,8 @@ func (g *Gwatch) Start() error {
 	})
 
 	g.fsWatcher.Listen(func(configs watcher.Configs) {
-		fmt.Println("[gwatch] watching path(s):", strings.Join(configs.RootPaths, ","))
-		fmt.Println("[gwatch] watching extension(s):", strings.Join(configs.Exts, ","))
+		clrLog("watching path(s): %s", strings.Join(configs.RootPaths, ","))
+		clrLog("watching extension(s): %s", strings.Join(configs.Exts, ","))
 
 		if err := g.runner.Launch(onBuild, onRunBuild); err != nil {
 			log.Fatal(err)
