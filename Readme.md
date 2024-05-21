@@ -1,5 +1,7 @@
 # Gwatch - Lightweight Auto reloader for Go applications
 
+![Demo of Gwatch in action](assets/demo.gif)
+
 `Gwatch` is a lightweight, super-fast and highly configurable auto reloader for your Go applications. It monitors your Go application for changes and automatically recompile and restarts your application, ensuring you see your changes instantly.
 
 ## Installation
